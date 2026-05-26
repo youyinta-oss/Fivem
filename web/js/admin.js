@@ -6,8 +6,6 @@ window.addEventListener('message', function(event) {
     if (data.action === 'openAdminUI') {
         config = data.config;
         document.getElementById('app').classList.remove('hidden');
-        initWeaponSelect();
-        initVehicleSelect();
         loadPlayers();
         loadAllGifts();
         loadAllRedPackets();
@@ -40,36 +38,6 @@ document.querySelectorAll('.tab').forEach(tab => {
 document.getElementById('adminTargetType').addEventListener('change', function() {
     document.getElementById('adminPlayerSelectGroup').classList.toggle('hidden', this.value === 'all');
 });
-
-document.getElementById('adminGiftType').addEventListener('change', function() {
-    document.querySelectorAll('.gift-settings').forEach(el => el.classList.add('hidden'));
-    document.getElementById('admin' + this.value.charAt(0).toUpperCase() + this.value.slice(1) + 'Settings').classList.remove('hidden');
-});
-
-document.getElementById('adminPacketType').addEventListener('change', function() {
-    document.querySelectorAll('.packet-settings').forEach(el => el.classList.add('hidden'));
-    document.getElementById('adminPacket' + this.value.charAt(0).toUpperCase() + this.value.slice(1) + 'Settings').classList.remove('hidden');
-});
-
-function initWeaponSelect() {
-    const selects = ['adminWeaponSelect', 'adminPacketWeaponSelect'];
-    selects.forEach(id => {
-        const select = document.getElementById(id);
-        if (select && config && config.Weapons) {
-            select.innerHTML = config.Weapons.map(w => `<option value="${w}">${w}</option>').join('');
-        }
-    });
-}
-
-function initVehicleSelect() {
-    const selects = ['adminVehicleSelect', 'adminPacketVehicleSelect'];
-    selects.forEach(id => {
-        const select = document.getElementById(id);
-        if (select && config && config.Vehicles) {
-            select.innerHTML = config.Vehicles.map(v => `<option value="${v}">${v}</option>').join('');
-        }
-    });
-}
 
 function loadPlayers() {
     fetch(`https://${GetParentResourceName()}/getPlayers`, {
@@ -121,7 +89,9 @@ function loadAllRedPackets() {
                         <p>类型: ${getGiftTypeName(p.packet_type)}</p>
                         <p>模式: ${getModeName(p.mode)}</p>
                         <p>已抢: ${p.opened_count}/${p.count}</p>
+                        <p>剩余: ${p.remain_amount}</p>
                         <p>时间: ${new Date(p.created_at)}</p>
+                        <p>状态: ${p.is_active ? '进行中' : '已结束'}</p>
                     </div>
                 </div>
             `).join('');
@@ -142,24 +112,10 @@ document.getElementById('adminSendGiftBtn').addEventListener('click', function()
         targetName = select.options[select.selectedIndex].dataset.name;
     }
     
-    if (giftType === 'item') {
-        giftData = {
-            item: document.getElementById('adminItemName').value,
-            amount: parseInt(document.getElementById('adminItemAmount').value)
-        };
-    } else if (giftType === 'money') {
+    if (giftType === 'money') {
         giftData = {
             account: document.getElementById('adminMoneyType').value,
             amount: parseInt(document.getElementById('adminMoneyAmount').value)
-        };
-    } else if (giftType === 'weapon') {
-        giftData = {
-            weapon: document.getElementById('adminWeaponSelect').value,
-            ammo: parseInt(document.getElementById('adminWeaponAmmo').value)
-        };
-    } else if (giftType === 'vehicle') {
-        giftData = {
-            vehicle: document.getElementById('adminVehicleSelect').value
         };
     }
     
@@ -187,28 +143,11 @@ document.getElementById('adminCreateRedPacketBtn').addEventListener('click', fun
     let packetData = {};
     let totalAmount = 0;
     
-    if (packetType === 'item') {
+    if (packetType === 'money') {
         packetData = {
-            item: document.getElementById('adminPacketItemName').value
-        };
-        totalAmount = parseInt(document.getElementById('adminPacketTotalAmount').value);
-    } else if (packetType === 'money') {
-        packetData = {
-            account: document.getElementById('adminPacketMoneyType').value,
-            amount: parseInt(document.getElementById('adminPacketTotalMoney').value)
+            account: document.getElementById('adminPacketMoneyType').value
         };
         totalAmount = parseInt(document.getElementById('adminPacketTotalMoney').value);
-    } else if (packetType === 'weapon') {
-        packetData = {
-            weapon: document.getElementById('adminPacketWeaponSelect').value,
-            ammo: parseInt(document.getElementById('adminPacketWeaponAmmo').value)
-        };
-        totalAmount = parseInt(document.getElementById('adminPacketCount').value);
-    } else if (packetType === 'vehicle') {
-        packetData = {
-            vehicle: document.getElementById('adminPacketVehicleSelect').value
-        };
-        totalAmount = parseInt(document.getElementById('adminPacketCount').value);
     }
     
     fetch(`https://${GetParentResourceName()}/createRedPacket`, {
@@ -232,10 +171,7 @@ document.getElementById('adminCreateRedPacketBtn').addEventListener('click', fun
 
 function getGiftTypeName(type) {
     const names = {
-        item: '物品',
-        money: '货币',
-        weapon: '武器',
-        vehicle: '车辆'
+        money: '货币'
     };
     return names[type] || type;
 }

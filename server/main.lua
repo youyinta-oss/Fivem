@@ -34,6 +34,7 @@ function LoadDatabase()
                 `packet_data` TEXT NOT NULL,
                 `mode` VARCHAR(20) NOT NULL,
                 `total_amount` INT NOT NULL,
+                `remain_amount` INT NOT NULL,
                 `count` INT NOT NULL,
                 `opened_count` INT DEFAULT 0,
                 `is_active` TINYINT(1) DEFAULT 1,
@@ -91,8 +92,8 @@ function LoadDatabase()
     function Database.CreateRedPacket(creatorId, creatorName, packetType, packetData, mode, totalAmount, count, expiresAt, callback)
         MySQL.Async.insert([[
             INSERT INTO `]] .. prefix .. [[redpackets` 
-            (creator_identifier, creator_name, packet_type, packet_data, mode, total_amount, count, expires_at)
-            VALUES (@creatorId, @creatorName, @packetType, @packetData, @mode, @totalAmount, @count, @expiresAt)
+            (creator_identifier, creator_name, packet_type, packet_data, mode, total_amount, remain_amount, count, expires_at)
+            VALUES (@creatorId, @creatorName, @packetType, @packetData, @mode, @totalAmount, @remainAmount, @count, @expiresAt)
         ]], {
             ['@creatorId'] = creatorId,
             ['@creatorName'] = creatorName,
@@ -100,6 +101,7 @@ function LoadDatabase()
             ['@packetData'] = json.encode(packetData),
             ['@mode'] = mode,
             ['@totalAmount'] = totalAmount,
+            ['@remainAmount'] = totalAmount,
             ['@count'] = count,
             ['@expiresAt'] = expiresAt
         }, function(insertId)
@@ -132,6 +134,18 @@ function LoadDatabase()
         end)
     end
 
+    function Database.GetExpiredRedPackets(callback)
+        MySQL.Async.fetchAll([[
+            SELECT * FROM `]] .. prefix .. [[redpackets` 
+            WHERE is_active = 1 AND expires_at IS NOT NULL AND expires_at <= NOW()
+        ]], {}, function(results)
+            for _, v in ipairs(results) do
+                v.packet_data = json.decode(v.packet_data)
+            end
+            if callback then callback(results) end
+        end)
+    end
+
     function Database.GetRedPacketRecords(packetId, callback)
         MySQL.Async.fetchAll([[
             SELECT * FROM `]] .. prefix .. [[redpacket_records` WHERE redpacket_id = @packetId
@@ -154,11 +168,24 @@ function LoadDatabase()
             MySQL.Async.execute([[
                 UPDATE `]] .. prefix .. [[redpackets` 
                 SET opened_count = opened_count + 1, 
+                    remain_amount = remain_amount - @amount,
                     is_active = CASE WHEN opened_count + 1 >= count THEN 0 ELSE is_active END
                 WHERE id = @packetId
-            ]], { ['@packetId'] = packetId }, function()
+            ]], {
+                ['@packetId'] = packetId,
+                ['@amount'] = amount
+            }, function()
                 if callback then callback(insertId) end
             end)
+        end)
+    end
+
+    function Database.CloseRedPacket(packetId, callback)
+        MySQL.Async.execute([[
+            UPDATE `]] .. prefix .. [[redpackets` 
+            SET is_active = 0 WHERE id = @packetId
+        ]], { ['@packetId'] = packetId }, function()
+            if callback then callback() end
         end)
     end
 
@@ -244,25 +271,8 @@ function LoadGiftSystem()
     end
 
     function GiftSystem.GiveGiftToPlayer(xPlayer, giftType, giftData, giftId)
-        if giftType == 'item' then
-            xPlayer.addInventoryItem(giftData.item, giftData.amount)
-        elseif giftType == 'money' then
+        if giftType == 'money' then
             xPlayer.addAccountMoney(giftData.account, giftData.amount)
-        elseif giftType == 'weapon' then
-            xPlayer.addWeapon(giftData.weapon, giftData.ammo or 1000)
-        elseif giftType == 'vehicle' then
-            local vehicleProps = giftData.props or {}
-            local carplate = GeneratePlate()
-            
-            MySQL.Async.execute('INSERT INTO owned_vehicles (owner, plate, vehicle, stored, garage) VALUES (@owner, @plate, @vehicle, @stored, @garage)', {
-                ['@owner'] = xPlayer.getIdentifier(),
-                ['@plate'] = carplate,
-                ['@vehicle'] = json.encode({model = GetHashKey(giftData.vehicle), plate = carplate}),
-                ['@stored'] = 1,
-                ['@garage'] = 'pillbox'
-            }, function()
-                TriggerClientEvent('gift_system:notification', xPlayer.source, '车辆已存到你的车库！')
-            end)
         end
         
         MySQL.Async.execute('INSERT INTO `gift_system_player_gifts` (gift_id, player_identifier, player_name) VALUES (@giftId, @identifier, @name)', {
@@ -284,15 +294,23 @@ function LoadGiftSystem()
 end
 
 function LoadRedPacketSystem()
-    function RedPacketSystem.CreateRedPacket(creatorId, creatorName, data)
-        local expiresAt = nil
-        if data.timeout then
-            expiresAt = os.date('%Y-%m-%d %H:%M:%S', os.time() + data.timeout)
+    function RedPacketSystem.CreateRedPacket(creatorId, creatorName, data, xPlayer)
+        -- 检查余额
+        if data.packetType == 'money' then
+            local account = data.packetData.account
+            local playerMoney = xPlayer.getAccount(account)
+            
+            if playerMoney.money < data.totalAmount then
+                return false, '余额不足！', nil
+            end
+            
+            -- 扣除金额
+            xPlayer.removeAccountMoney(account, data.totalAmount)
         end
         
-        local totalAmount = data.totalAmount or data.count
-        if data.mode == 'first_come' then
-            totalAmount = (data.packetData.amount or 1) * data.count
+        local expiresAt = nil
+        if data.timeout and data.timeout > 0 then
+            expiresAt = os.date('%Y-%m-%d %H:%M:%S', os.time() + data.timeout)
         end
         
         local createdPacketId = 0
@@ -302,7 +320,7 @@ function LoadRedPacketSystem()
             data.packetType,
             data.packetData,
             data.mode,
-            totalAmount,
+            data.totalAmount,
             data.count,
             expiresAt,
             function(packetId)
@@ -353,24 +371,12 @@ function LoadRedPacketSystem()
 
     function RedPacketSystem.CalculateAmount(packet)
         local remaining = packet.count - packet.opened_count
-        local remainingAmount = packet.total_amount
-        
-        Database.GetRedPacketRecords(packet.id, function(records)
-            for _, record in ipairs(records) do
-                remainingAmount = remainingAmount - record.amount
-            end
-        end)
-        
-        Wait(100)
+        local remainingAmount = packet.remain_amount
         
         if packet.mode == 'equal' then
             return math.floor(remainingAmount / remaining)
         elseif packet.mode == 'first_come' then
-            if packet.packet_type == 'item' or packet.packet_type == 'weapon' or packet.packet_type == 'vehicle' then
-                return 1
-            else
-                return packet.packet_data.amount or 1
-            end
+            return packet.packet_data.amount or math.floor(remainingAmount / packet.count)
         else
             if remaining == 1 then
                 return remainingAmount
@@ -381,38 +387,35 @@ function LoadRedPacketSystem()
     end
 
     function RedPacketSystem.GiveRedPacketReward(xPlayer, packetType, packetData, amount)
-        if packetType == 'item' then
-            xPlayer.addInventoryItem(packetData.item, amount)
-        elseif packetType == 'money' then
+        if packetType == 'money' then
             xPlayer.addAccountMoney(packetData.account, amount)
-        elseif packetType == 'weapon' then
-            xPlayer.addWeapon(packetData.weapon, packetData.ammo or 1000)
-        elseif packetType == 'vehicle' then
-            local carplate = GeneratePlate()
-            
-            MySQL.Async.execute('INSERT INTO owned_vehicles (owner, plate, vehicle, stored, garage) VALUES (@owner, @plate, @vehicle, @stored, @garage)', {
-                ['@owner'] = xPlayer.getIdentifier(),
-                ['@plate'] = carplate,
-                ['@vehicle'] = json.encode({model = GetHashKey(packetData.vehicle), plate = carplate}),
-                ['@stored'] = 1,
-                ['@garage'] = 'pillbox'
-            }, function()
-                TriggerClientEvent('gift_system:notification', xPlayer.source, '车辆已存到你的车库！')
-            end)
         end
     end
-end
 
-function GeneratePlate()
-    local plate = ''
-    for i = 1, 8 do
-        if i <= 4 then
-            plate = plate .. string.char(math.random(65, 90))
-        else
-            plate = plate .. math.random(0, 9)
-        end
+    function RedPacketSystem.RefundExpiredRedPackets()
+        Database.GetExpiredRedPackets(function(packets)
+            for _, packet in ipairs(packets) do
+                if packet.remain_amount > 0 then
+                    local xPlayer = ESX.GetPlayerFromIdentifier(packet.creator_identifier)
+                    if xPlayer then
+                        -- 退回剩余金额
+                        if packet.packet_type == 'money' then
+                            xPlayer.addAccountMoney(packet.packet_data.account, packet.remain_amount)
+                            TriggerClientEvent('gift_system:notification', xPlayer.source, 
+                                '你的红包已过期，退回 ' .. packet.remain_amount .. ' 货币')
+                        end
+                    end
+                end
+                
+                Database.CloseRedPacket(packet.id)
+                
+                -- 更新内存中的红包
+                if activeRedPackets[packet.id] then
+                    activeRedPackets[packet.id] = nil
+                end
+            end
+        end)
     end
-    return plate
 end
 
 function LoadActiveRedPackets()
@@ -431,6 +434,14 @@ AddEventHandler('onResourceStart', function(resourceName)
     LoadRedPacketSystem()
     Database.Init()
     LoadActiveRedPackets()
+    
+    -- 定时检查过期红包
+    CreateThread(function()
+        while true do
+            Wait(60000) -- 每分钟检查一次
+            RedPacketSystem.RefundExpiredRedPackets()
+        end
+    end)
 end)
 
 ESX.RegisterServerCallback('gift_system:getPlayers', function(source, cb)
@@ -452,7 +463,32 @@ end)
 ESX.RegisterServerCallback('gift_system:sendGift', function(source, cb, data)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then cb({success = false, msg = '玩家不存在'}) return end
-
+    
+    -- 检查余额
+    if data.giftType == 'money' then
+        local account = data.giftData.account
+        local playerMoney = xPlayer.getAccount(account)
+        
+        if playerMoney.money < data.giftData.amount then
+            cb({success = false, msg = '余额不足！'})
+            return
+        end
+        
+        -- 扣除金额
+        if data.targetType == 'player' then
+            xPlayer.removeAccountMoney(account, data.giftData.amount)
+        else
+            -- 全服礼物需要计算总金额
+            local xPlayers = ESX.GetPlayers()
+            local totalAmount = data.giftData.amount * #xPlayers
+            if playerMoney.money < totalAmount then
+                cb({success = false, msg = '余额不足！全服礼物需要 ' .. totalAmount .. ' ' .. account})
+                return
+            end
+            xPlayer.removeAccountMoney(account, totalAmount)
+        end
+    end
+    
     local success, msg = GiftSystem.SendGift(
         xPlayer.getIdentifier(),
         xPlayer.getName(),
@@ -463,20 +499,21 @@ ESX.RegisterServerCallback('gift_system:sendGift', function(source, cb, data)
         data.giftData,
         data.message
     )
-
+    
     cb({success = success, msg = msg})
 end)
 
 ESX.RegisterServerCallback('gift_system:createRedPacket', function(source, cb, data)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then cb({success = false, msg = '玩家不存在'}) return end
-
+    
     local success, msg, packetId = RedPacketSystem.CreateRedPacket(
         xPlayer.getIdentifier(),
         xPlayer.getName(),
-        data
+        data,
+        xPlayer
     )
-
+    
     if success and packetId then
         Database.GetRedPacketById(packetId, function(packet)
             if packet then
@@ -485,7 +522,7 @@ ESX.RegisterServerCallback('gift_system:createRedPacket', function(source, cb, d
             end
         end)
     end
-
+    
     cb({success = success, msg = msg, packetId = packetId})
 end)
 
@@ -500,30 +537,31 @@ end)
 ESX.RegisterServerCallback('gift_system:openRedPacket', function(source, cb, packetId)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then cb({success = false, msg = '玩家不存在'}) return end
-
+    
     local success, msg, amount = RedPacketSystem.OpenRedPacket(
         packetId,
         xPlayer.getIdentifier(),
         xPlayer.getName(),
         xPlayer
     )
-
+    
     if success then
         if activeRedPackets[packetId] then
             activeRedPackets[packetId].opened_count = activeRedPackets[packetId].opened_count + 1
+            activeRedPackets[packetId].remain_amount = activeRedPackets[packetId].remain_amount - amount
             if activeRedPackets[packetId].opened_count >= activeRedPackets[packetId].count then
                 activeRedPackets[packetId] = nil
             end
         end
     end
-
+    
     cb({success = success, msg = msg, amount = amount})
 end)
 
 ESX.RegisterServerCallback('gift_system:getPlayerHistory', function(source, cb, limit)
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then cb({}) return end
-
+    
     Database.GetPlayerGiftHistory(xPlayer.getIdentifier(), limit, cb)
 end)
 
