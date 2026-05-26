@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赠礼系统 - 管理后台</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app" class="hidden">
+        <div class="container admin">
+            <header>
+                <h1>🛠️ 管理后台</h1>
+                <button id="closeBtn" class="btn btn-close">✕</button>
+            </header>
+            
+            <nav class="tabs">
+                <button class="tab active" data-tab="allGifts">所有礼物</button>
+                <button class="tab" data-tab="allRedPackets">所有红包</button>
+                <button class="tab" data-tab="sendGift">发送礼物</button>
+                <button class="tab" data-tab="createRedPacket">发红包</button>
+            </nav>
+            
+            <div class="tab-content">
+                <div id="allGifts" class="tab-panel active">
+                    <h3>所有礼物记录</h3>
+                    <div id="allGiftsList" class="list">
+                        <p class="empty">加载中...</p>
+                    </div>
+                </div>
+                
+                <div id="allRedPackets" class="tab-panel">
+                    <h3>所有红包记录</h3>
+                    <div id="allRedPacketsList" class="list">
+                        <p class="empty">加载中...</p>
+                    </div>
+                </div>
+                
+                <div id="sendGift" class="tab-panel">
+                    <div class="form-group">
+                        <label>赠送对象</label>
+                        <select id="adminTargetType">
+                            <option value="player">指定玩家</option>
+                            <option value="all">全部在线玩家</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="adminPlayerSelectGroup">
+                        <label>选择玩家</label>
+                        <select id="adminPlayerSelect">
+                            <option value="">加载中...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>礼物类型</label>
+                        <select id="adminGiftType">
+                            <option value="item">物品</option>
+                            <option value="money">货币</option>
+                            <option value="weapon">武器</option>
+                            <option value="vehicle">车辆</option>
+                        </select>
+                    </div>
+                    
+                    <div id="adminItemSettings" class="gift-settings">
+                        <div class="form-group">
+                            <label>物品名称</label>
+                            <input type="text" id="adminItemName" placeholder="例如: bread">
+                        </div>
+                        <div class="form-group">
+                            <label>数量</label>
+                            <input type="number" id="adminItemAmount" value="1" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminMoneySettings" class="gift-settings hidden">
+                        <div class="form-group">
+                            <label>货币类型</label>
+                            <select id="adminMoneyType">
+                                <option value="money">现金</option>
+                                <option value="bank">银行</option>
+                                <option value="black_money">黑钱</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>金额</label>
+                            <input type="number" id="adminMoneyAmount" value="1000" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminWeaponSettings" class="gift-settings hidden">
+                        <div class="form-group">
+                            <label>武器</label>
+                            <select id="adminWeaponSelect"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>弹药数量</label>
+                            <input type="number" id="adminWeaponAmmo" value="1000" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminVehicleSettings" class="gift-settings hidden">
+                        <div class="form-group">
+                            <label>车辆</label>
+                            <select id="adminVehicleSelect"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>留言 (可选)</label>
+                        <textarea id="adminGiftMessage" placeholder="写点什么..."></textarea>
+                    </div>
+                    
+                    <button id="adminSendGiftBtn" class="btn btn-primary">发送礼物</button>
+                </div>
+                
+                <div id="createRedPacket" class="tab-panel">
+                    <div class="form-group">
+                        <label>红包类型</label>
+                        <select id="adminPacketType">
+                            <option value="item">物品红包</option>
+                            <option value="money">货币红包</option>
+                            <option value="weapon">武器红包</option>
+                            <option value="vehicle">车辆红包</option>
+                        </select>
+                    </div>
+                    
+                    <div id="adminPacketItemSettings" class="packet-settings">
+                        <div class="form-group">
+                            <label>物品名称</label>
+                            <input type="text" id="adminPacketItemName" placeholder="例如: bread">
+                        </div>
+                        <div class="form-group">
+                            <label>总数量</label>
+                            <input type="number" id="adminPacketTotalAmount" value="10" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminPacketMoneySettings" class="packet-settings hidden">
+                        <div class="form-group">
+                            <label>货币类型</label>
+                            <select id="adminPacketMoneyType">
+                                <option value="money">现金</option>
+                                <option value="bank">银行</option>
+                                <option value="black_money">黑钱</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>总金额</label>
+                            <input type="number" id="adminPacketTotalMoney" value="10000" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminPacketWeaponSettings" class="packet-settings hidden">
+                        <div class="form-group">
+                            <label>武器</label>
+                            <select id="adminPacketWeaponSelect"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>弹药数量</label>
+                            <input type="number" id="adminPacketWeaponAmmo" value="1000" min="1">
+                        </div>
+                    </div>
+                    
+                    <div id="adminPacketVehicleSettings" class="packet-settings hidden">
+                        <div class="form-group">
+                            <label>车辆</label>
+                            <select id="adminPacketVehicleSelect"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>红包个数</label>
+                        <input type="number" id="adminPacketCount" value="5" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>分配模式</label>
+                        <select id="adminPacketMode">
+                            <option value="random">随机分配</option>
+                            <option value="equal">平均分配</option>
+                            <option value="first_come">先到先得</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>过期时间 (秒，可选)</label>
+                        <input type="number" id="adminPacketTimeout" value="300" min="0" placeholder="0表示永不过期">
+                    </div>
+                    
+                    <button id="adminCreateRedPacketBtn" class="btn btn-primary">发红包</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification hidden"></div>
+    
+    <script src="js/admin.js"></script>
+</body>
+</html>
