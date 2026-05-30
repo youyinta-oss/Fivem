@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调车系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>实时调车系统</h1>
+            <button id="closeBtn" class="close-btn">×</button>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <h3>预装方案</h3>
+                <div id="tunesList" class="tunes-list"></div>
+                <button id="deleteTuneBtn" class="btn delete-btn">删除方案</button>
+            </div>
+            
+            <div class="main-panel">
+                <div class="tune-controls">
+                    <div class="control-group">
+                        <label for="mass">重量 (kg)</label>
+                        <input type="range" id="mass" min="500" max="5000" step="10">
+                        <span id="massValue">1500</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="acceleration">加速</label>
+                        <input type="range" id="acceleration" min="0.1" max="2.0" step="0.01">
+                        <span id="accelerationValue">0.5</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="brakeForce">刹车力度</label>
+                        <input type="range" id="brakeForce" min="0.1" max="3.0" step="0.01">
+                        <span id="brakeForceValue">1.0</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="brakeBiasFront">刹车比例 (前)</label>
+                        <input type="range" id="brakeBiasFront" min="0.1" max="0.9" step="0.01">
+                        <span id="brakeBiasFrontValue">0.5</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="steeringLock">转向角度</label>
+                        <input type="range" id="steeringLock" min="10" max="60" step="1">
+                        <span id="steeringLockValue">35</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="tractionCurveMax">抓地力</label>
+                        <input type="range" id="tractionCurveMax" min="0.5" max="3.0" step="0.01">
+                        <span id="tractionCurveMaxValue">1.0</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="suspensionForce">悬挂硬度</label>
+                        <input type="range" id="suspensionForce" min="0.1" max="5.0" step="0.01">
+                        <span id="suspensionForceValue">2.0</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="antiRollBarForce">防倾杆</label>
+                        <input type="range" id="antiRollBarForce" min="0.0" max="5.0" step="0.01">
+                        <span id="antiRollBarForceValue">1.0</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="initialDragCoeff">空气阻力</label>
+                        <input type="range" id="initialDragCoeff" min="0.1" max="10.0" step="0.1">
+                        <span id="initialDragCoeffValue">2.0</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="driveBiasFront">驱动比例 (前)</label>
+                        <input type="range" id="driveBiasFront" min="0.0" max="1.0" step="0.01">
+                        <span id="driveBiasFrontValue">0.5</span>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="saveBtn" class="btn save-btn">保存方案</button>
+                    <button id="resetBtn" class="btn reset-btn">重置原厂</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>保存调车方案</h3>
+            <input type="text" id="tuneNameInput" placeholder="输入方案名称">
+            <button id="confirmSaveBtn" class="btn save-btn">确认保存</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
