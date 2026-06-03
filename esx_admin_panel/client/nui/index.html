@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESX Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" class="hidden">
+        <!-- 顶部标题栏 -->
+        <div class="header">
+            <div class="header-title">ESX 管理面板</div>
+            <div class="header-actions">
+                <span id="player-count" class="badge">0 在线</span>
+                <button id="btn-close" class="btn btn-icon" title="关闭">&times;</button>
+            </div>
+        </div>
+
+        <!-- 标签导航 -->
+        <div class="tabs">
+            <button class="tab active" data-tab="players">玩家列表</button>
+            <button class="tab" data-tab="bans">封禁管理</button>
+            <button class="tab" data-tab="audit">审计日志</button>
+            <button class="tab" data-tab="world">世界控制</button>
+            <button class="tab" data-tab="resources">资源监控</button>
+        </div>
+
+        <!-- 玩家列表 -->
+        <div id="tab-players" class="tab-content active">
+            <div class="toolbar">
+                <input type="text" id="player-search" class="input" placeholder="搜索玩家...">
+                <button id="btn-refresh-players" class="btn btn-primary">刷新</button>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名称</th>
+                            <th>职业</th>
+                            <th>现金</th>
+                            <th>银行</th>
+                            <th>Ping</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="player-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 封禁管理 -->
+        <div id="tab-bans" class="tab-content">
+            <div class="toolbar">
+                <input type="text" id="ban-search" class="input" placeholder="搜索封禁记录...">
+                <button id="btn-refresh-bans" class="btn btn-primary">刷新</button>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>玩家</th>
+                            <th>标识符</th>
+                            <th>理由</th>
+                            <th>管理员</th>
+                            <th>到期时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ban-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 审计日志 -->
+        <div id="tab-audit" class="tab-content">
+            <div class="toolbar">
+                <input type="text" id="audit-search" class="input" placeholder="搜索操作记录...">
+                <button id="btn-refresh-audit" class="btn btn-primary">刷新</button>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>管理员</th>
+                            <th>操作</th>
+                            <th>详情</th>
+                            <th>目标</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 世界控制 -->
+        <div id="tab-world" class="tab-content">
+            <div class="world-grid">
+                <!-- 天气 -->
+                <div class="card">
+                    <h3>天气控制</h3>
+                    <select id="weather-select" class="input">
+                        <option value="">选择天气...</option>
+                    </select>
+                    <button id="btn-set-weather" class="btn btn-primary btn-block">设置天气</button>
+                </div>
+
+                <!-- 时间 -->
+                <div class="card">
+                    <h3>时间控制</h3>
+                    <div class="input-group">
+                        <input type="number" id="time-hour" class="input" min="0" max="23" placeholder="时" value="12">
+                        <span class="input-separator">:</span>
+                        <input type="number" id="time-minute" class="input" min="0" max="59" placeholder="分" value="0">
+                    </div>
+                    <button id="btn-set-time" class="btn btn-primary btn-block">设置时间</button>
+                </div>
+
+                <!-- 快捷功能 -->
+                <div class="card">
+                    <h3>快捷功能</h3>
+                    <button id="btn-noclip" class="btn btn-secondary btn-block">穿墙模式</button>
+                    <button id="btn-godmode" class="btn btn-secondary btn-block">无敌模式</button>
+                </div>
+
+                <!-- 公告 -->
+                <div class="card">
+                    <h3>服务器公告</h3>
+                    <input type="text" id="announce-message" class="input" placeholder="公告内容...">
+                    <button id="btn-announce" class="btn btn-warning btn-block">发送公告</button>
+                </div>
+
+                <!-- 车辆 -->
+                <div class="card">
+                    <h3>车辆管理</h3>
+                    <input type="text" id="vehicle-model" class="input" placeholder="车辆模型名称...">
+                    <button id="btn-spawn-vehicle" class="btn btn-primary btn-block">生成车辆</button>
+                    <button id="btn-delete-vehicle" class="btn btn-danger btn-block">删除附近车辆</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 资源监控 -->
+        <div id="tab-resources" class="tab-content">
+            <div class="toolbar">
+                <input type="text" id="resource-search" class="input" placeholder="搜索资源...">
+                <button id="btn-refresh-resources" class="btn btn-primary">刷新</button>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>资源名称</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resource-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 玩家详情弹窗 -->
+        <div id="player-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-player-name">玩家详情</h3>
+                    <button class="btn btn-icon modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="modal-player-body">
+                    <!-- 动态填充 -->
+                </div>
+                <div class="modal-footer" id="modal-player-actions">
+                    <!-- 动态填充操作按钮 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 封禁弹窗 -->
+        <div id="ban-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content modal-sm">
+                <div class="modal-header">
+                    <h3>封禁玩家</h3>
+                    <button class="btn btn-icon modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="ban-target-id">
+                    <div class="form-group">
+                        <label>封禁时长</label>
+                        <select id="ban-duration" class="input"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>封禁理由</label>
+                        <textarea id="ban-reason" class="input" rows="3" placeholder="请输入封禁理由..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-close">取消</button>
+                    <button id="btn-confirm-ban" class="btn btn-danger">确认封禁</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 确认弹窗 -->
+        <div id="confirm-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content modal-sm">
+                <div class="modal-header">
+                    <h3 id="confirm-title">确认操作</h3>
+                    <button class="btn btn-icon modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirm-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-close">取消</button>
+                    <button id="btn-confirm-action" class="btn btn-danger">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
